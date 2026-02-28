@@ -9,6 +9,10 @@ from flask import Blueprint, request, jsonify
 from app.extensions import supabase_client
 
 auth_bp = Blueprint("auth", __name__)
+
+# ─────────────────────────────────────────────
+# SIGNUP
+# ─────────────────────────────────────────────
 @auth_bp.route("/signup", methods=["POST"])
 def signup():
     data = request.get_json(silent=True)
@@ -22,7 +26,7 @@ def signup():
     community = data.get("community", "General")
     gender = data.get("gender", "Male")
     education_level = data.get("education_level", "Degree")
-    income = data.get("income", 0)
+    income = int(data.get("income", 0))   # ✅ ensure integer
     district = data.get("district", "Unknown")
 
     if not email or not password:
@@ -43,7 +47,7 @@ def signup():
 
         user_id = result.user.id
 
-        # 2️⃣ Insert profile
+        # 2️⃣ Insert profile using admin client
         from app.extensions import supabase_admin
 
         profile_insert = supabase_admin.table("profiles").insert({
@@ -68,29 +72,16 @@ def signup():
         return jsonify({"error": str(e)}), 400
 
 
+# ─────────────────────────────────────────────
+# LOGIN
+# ─────────────────────────────────────────────
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    """
-    Authenticate user and receive JWT access token.
-    
-    Request Body:
-        {
-            "email": "user@example.com",
-            "password": "securePassword123"
-        }
-    
-    Response 200:
-        {
-            "access_token": "eyJ...",
-            "refresh_token": "...",
-            "user": { "id": "uuid", "email": "..." }
-        }
-    """
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "Request body must be JSON"}), 400
 
-    email    = data.get("email", "").strip().lower()
+    email = data.get("email", "").strip().lower()
     password = data.get("password", "")
 
     if not email or not password:
@@ -98,51 +89,40 @@ def login():
 
     try:
         result = supabase_client.auth.sign_in_with_password({
-            "email":    email,
+            "email": email,
             "password": password
         })
+
         if result.session:
             return jsonify({
-                "access_token":  result.session.access_token,
+                "access_token": result.session.access_token,
                 "refresh_token": result.session.refresh_token,
                 "user": {
-                    "id":    result.user.id,
+                    "id": result.user.id,
                     "email": result.user.email
                 }
             }), 200
         else:
             return jsonify({"error": "Login failed. Check credentials."}), 401
+
     except Exception as e:
         return jsonify({"error": str(e)}), 401
 
 
+# ─────────────────────────────────────────────
+# LOGOUT (Stateless)
+# ─────────────────────────────────────────────
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    """
-    Invalidate the current Supabase session.
-    Client should also discard tokens from local storage.
-    
-    Response 200:
-        { "message": "Logged out successfully" }
-    """
-    try:
-        supabase_client.auth.sign_out()
-        return jsonify({"message": "Logged out successfully"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+    # Supabase logout is handled client-side by discarding JWT
+    return jsonify({"message": "Logged out successfully"}), 200
 
 
+# ─────────────────────────────────────────────
+# RESET PASSWORD
+# ─────────────────────────────────────────────
 @auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
-    """
-    Send a password reset email via Supabase.
-    
-    Request Body:
-        { "email": "user@example.com" }
-    
-    Response 200:
-        { "message": "Password reset email sent" }
-    """
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "Request body must be JSON"}), 400
@@ -156,6 +136,8 @@ def reset_password():
         return jsonify({"message": "Password reset email sent if the account exists"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+
 # ─────────────────────────────────────────────
 # GET CURRENT PROFILE
 # ─────────────────────────────────────────────
@@ -163,6 +145,9 @@ def reset_password():
 def get_profile():
     try:
         token = request.headers.get("Authorization", "").replace("Bearer ", "")
+
+        if not token:
+            return jsonify({"error": "Unauthorized"}), 401
 
         user_response = supabase_client.auth.get_user(jwt=token)
 
@@ -192,6 +177,9 @@ def update_profile():
     try:
         token = request.headers.get("Authorization", "").replace("Bearer ", "")
 
+        if not token:
+            return jsonify({"error": "Unauthorized"}), 401
+
         user_response = supabase_client.auth.get_user(jwt=token)
 
         if not user_response or not user_response.user:
@@ -206,7 +194,7 @@ def update_profile():
                 "community": data.get("community"),
                 "gender": data.get("gender"),
                 "education_level": data.get("education_level"),
-                "income": data.get("income"),
+                "income": int(data.get("income", 0)),  # ✅ ensure integer
                 "district": data.get("district")
             }) \
             .eq("id", user_id) \
