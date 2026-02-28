@@ -4,7 +4,6 @@ FILE: app/routes/auth.py
 PURPOSE: Authentication routes – signup, login, logout, password reset
          All auth is delegated to Supabase; Flask only proxies and wraps responses.
 """
-
 from flask import Blueprint, request, jsonify
 from app.extensions import supabase_client
 
@@ -13,51 +12,48 @@ auth_bp = Blueprint("auth", __name__)
 
 @auth_bp.route("/signup", methods=["POST"])
 def signup():
-    """
-    Register a new user with Supabase Auth.
-    
-    Request Body:
-        {
-            "email": "user@example.com",
-            "password": "securePassword123"
-        }
-    
-    After signup, the user must separately call POST /api/profile/create
-    to fill in their profile (community, income, education_level, etc.).
-    
-    Response 201:
-        {
-            "message": "Signup successful. Please verify your email.",
-            "user_id": "uuid-string"
-        }
-    """
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "Request body must be JSON"}), 400
 
-    email    = data.get("email", "").strip().lower()
+    email = data.get("email", "").strip().lower()
     password = data.get("password", "")
 
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
+
     if len(password) < 8:
         return jsonify({"error": "Password must be at least 8 characters"}), 400
 
     try:
         result = supabase_client.auth.sign_up({
-            "email":    email,
+            "email": email,
             "password": password
         })
-        if result.user:
-            return jsonify({
-                "message": "Signup successful. Please verify your email before logging in.",
-                "user_id": result.user.id
-            }), 201
-        else:
+
+        if not result.user:
             return jsonify({"error": "Signup failed. User not created."}), 400
+
+        user_id = result.user.id
+
+        # Create profile in database
+        supabase_client.table("profiles").insert({
+            "user_id": user_id,
+            "name": data.get("name"),
+            "community": data.get("community"),
+            "gender": data.get("gender"),
+            "education_level": data.get("education_level"),
+            "income": data.get("income"),
+            "district": data.get("district")
+        }).execute()
+
+        return jsonify({
+            "message": "Signup successful. Please verify your email.",
+            "user_id": user_id
+        }), 201
+
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
