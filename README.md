@@ -107,12 +107,89 @@ Scholarships are filtered according to user specifications
 **System Architecture:**
 
 ![Architecture Diagram](docs/architecture.png)
-*Explain your system architecture - components, data flow, tech stack interaction*
+1️⃣ Frontend
+
+Built using JavaScript
+
+Collects user profile data
+
+Displays filtered scholarships
+
+Provides chatbot interface
+
+2️⃣ Backend (Flask API)
+
+Handles authentication
+
+Processes scholarship filtering logic
+
+Manages chatbot interactions
+
+Sends automated email alerts
+
+Schedules deadline notifications
+
+3️⃣ Database (Supabase - PostgreSQL)
+
+Stores:
+
+User profiles
+
+Scholarship records
+
+Application deadlines
+
+Authority email contacts
+
+4️⃣ AI Chatbot Engine
+
+Powered by OpenAI / Ollama
+
+Handles user queries like:
+
+“What scholarships are available for SC students?”
+
+“What documents are required?”
+
+“When is the deadline?”
+
+5️⃣ Email Notification System
+
+Integrated using Resend API
+
+Automatically sends:
+
+Alerts to local authorities when new scholarships are added
+
+Deadline reminders to students
+
+6️⃣ Scheduler
+
+APScheduler runs periodic tasks:
+
+Deadline checks
+
+Automated reminders
 
 **Application Workflow:**
 
 ![Workflow](docs/workflow.png)
-*Add caption explaining your workflow*
+1. User registers and logs in.
+2. User completes profile (community, income, qualification, etc.).
+3. Backend fetches matching scholarships from Supabase.
+4. Filtered results are displayed to the user.
+
+User can:
+
+1. View details
+2. Check required documents
+3. Get official redirect links
+4. Ask chatbot queries
+
+If a new scholarship is added:
+
+1. System triggers automated email to local authorities.
+2. Scheduler monitors deadlines and sends alerts.
 
 ---
 
@@ -122,42 +199,57 @@ Scholarships are filtered according to user specifications
 
 #### API Documentation
 
-**Base URL:** `https://api.yourproject.com`
+**Base URL:** `http://localhost:5000`
 
 ##### Endpoints
 
 **GET /api/endpoint**
-- **Description:** [What it does]
+- **Description:** Registers a new user
 - **Parameters:**
   - `param1` (string): [Description]
   - `param2` (integer): [Description]
 - **Response:**
-```json
-{
+``{
   "status": "success",
-  "data": {}
+  "message": "User registered successfully"
 }
 ```
 
 **POST /api/endpoint**
 - **Description:** [What it does]
 - **Request Body:**
-```json
-{
-  "field1": "value1",
-  "field2": "value2"
+```{
+  "name": "Negha",
+  "email": "user@email.com",
+  "password": "securepassword"
 }
 ```
+**Description:** Authenticate user
 - **Response:**
-```json
 {
   "status": "success",
-  "message": "Operation completed"
+  "token": "jwt_token_here"
+}
+ **Request Body:**
+{
+  "email": "user@email.com",
+  "password": "securepassword"
 }
 ```
-
-[Add more endpoints as needed...]
-
+**Description:** Returns scholarships filtered based on user profile.
+**Response:**
+{
+  "status": "success",
+  "data": [
+    {
+      "title": "Post Matric Scholarship",
+      "deadline": "2026-03-15",
+      "eligibility": "SC/ST students",
+      "documents_required": ["Income Certificate", "Caste Certificate"],
+      "official_link": "https://..."
+    }
+  ]
+}
 ### For Scripts/CLI Tools:
 
 #### Command Reference
