@@ -1077,86 +1077,60 @@ async function doSignup(event) {
     const fd = new FormData(form);
     const data = Object.fromEntries(fd.entries());
 
-    const token = localStorage.getItem("ks_token");
-    const isUpdate = !!token;
-
     try {
-        let response, result;
+        // 🔹 STEP 1: SIGNUP
+        const signupRes = await fetch("/api/auth/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: data.email,
+                password: data.password,
+                name: data.name,
+                community: data.community,
+                gender: data.gender,
+                education_level: data.education_level,
+                income: parseInt(data.income),
+                district: data.district
+            })
+        });
 
-        if (isUpdate) {
-            // 🔹 UPDATE PROFILE
-            response = await fetch("/api/auth/profile/update", {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + token
-                },
-                body: JSON.stringify({
-                    name: data.name,
-                    community: data.community,
-                    gender: data.gender,
-                    education_level: data.education_level,
-                    income: parseInt(data.income),
-                    district: data.district
-                })
-            });
+        const signupData = await signupRes.json();
 
-            result = await response.json();
-            if (!response.ok) throw new Error(result.error || "Profile update failed");
-
-            showMsg('auth-msg', 'Profile updated successfully! Redirecting…', 'ok');
-
-            setTimeout(() => {
-                go(4);
-            }, 800);
-
-        } else {
-            // 🔹 SIGNUP
-            response = await fetch("/api/auth/signup", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: data.email,
-                    password: data.password,
-                    name: data.name,
-                    community: data.community,
-                    gender: data.gender,
-                    education_level: data.education_level,
-                    income: parseInt(data.income),
-                    district: data.district
-                })
-            });
-
-            result = await response.json();
-            if (!response.ok) throw new Error(result.error || "Signup failed");
-
-            // 🔹 AUTO LOGIN
-            const loginRes = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: data.email,
-                    password: data.password
-                })
-            });
-
-            const loginData = await loginRes.json();
-            if (!loginRes.ok) throw new Error("Login after signup failed");
-
-            localStorage.setItem("ks_token", loginData.access_token);
-            localStorage.setItem("ks_email", loginData.user?.email || data.email);
-
-            token = loginData.access_token;
-
-            showMsg('auth-msg', 'Account created successfully! Redirecting…', 'ok');
-
-            setTimeout(() => {
-                go(4);
-            }, 800);
+        if (!signupRes.ok) {
+            throw new Error(signupData.error || "Signup failed");
         }
 
+        // 🔹 STEP 2: AUTO LOGIN
+        const loginRes = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: data.email,
+                password: data.password
+            })
+        });
+
+        const loginData = await loginRes.json();
+
+        if (!loginRes.ok) {
+            throw new Error(loginData.error || "Login after signup failed");
+        }
+
+        // 🔹 STORE TOKEN
+        localStorage.setItem("ks_token", loginData.access_token);
+        localStorage.setItem("ks_email", loginData.user?.email || data.email);
+
+        token = loginData.access_token;
+        userEmail = loginData.user?.email || data.email;
+
+        showMsg('auth-msg', "Account created successfully! Redirecting…", "ok");
+
+        setTimeout(() => {
+            go(4);
+        }, 800);
+
     } catch (error) {
-        showMsg('auth-msg', error.message || "Something went wrong.", 'err');
+        showMsg('auth-msg', error.message || "Something went wrong.", "err");
     } finally {
         setLoad('s', false);
     }
