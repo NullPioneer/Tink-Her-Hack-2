@@ -1,6 +1,7 @@
 <p align="center">
   <img src="./img.png" alt="Project Banner" width="100%">
 </p>
+<img width="1280" height="640" alt="img" src="https://github.com/user-attachments/assets/510bd55b-cdd3-4d1d-9213-f8daa20601b3" />
 
 # KeralaSeva AI 🎯
 
